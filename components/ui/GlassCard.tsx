@@ -5,9 +5,8 @@ import Animated, {
   useSharedValue, 
   withSpring, 
   withTiming,
-  interpolate
 } from 'react-native-reanimated';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { colors, radius, spacing, elevation } from '@/constants/theme';
 
 interface GlassCardProps extends ViewProps {
   children: React.ReactNode;
@@ -24,7 +23,6 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   pressable = false,
   ...props 
 }) => {
-  const colorScheme = useColorScheme();
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -36,7 +34,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   const handlePressIn = () => {
     if (pressable) {
       scale.value = withSpring(0.98, { damping: 15, stiffness: 300 });
-      opacity.value = withTiming(0.8, { duration: 150 });
+      opacity.value = withTiming(0.9, { duration: 150 });
     }
   };
 
@@ -47,7 +45,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     }
   };
 
-  const isDark = colorScheme === 'dark';
+  // Use theme colors for glass effect
+  const isDark = tint === 'dark' || (tint === 'default');
 
   return (
     <Animated.View 
@@ -61,7 +60,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
       onTouchEnd={handlePressOut}
       {...props}
     >
-      <View style={[styles.blurView, isDark ? styles.darkBlur : styles.lightBlur]}>
+      <View style={[styles.content, isDark ? styles.darkContent : styles.lightContent]}>
         {children}
       </View>
     </Animated.View>
@@ -70,33 +69,29 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 24,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 15,
+    ...elevation.md,
   },
   lightContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    shadowColor: '#8B5CF6',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: colors.shadow,
   },
   darkContainer: {
+    backgroundColor: colors.surface,
+    shadowColor: colors.shadow,
+  },
+  content: {
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+  },
+  lightContent: {
+    borderColor: colors.border,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
   },
-  blurView: {
-    padding: 20,
-    borderRadius: 24,
-    borderWidth: 1.5,
-  },
-  lightBlur: {
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  darkBlur: {
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  darkContent: {
+    borderColor: colors.border,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
 });
-

@@ -1,5 +1,4 @@
-import { GlassCard } from '@/components/ui/GlassCard';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ThemedCard } from '@/components/ui/ThemedCard';
 import { MockEmail } from '@/types';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -10,12 +9,15 @@ import Animated, {
   useSharedValue,
   withSpring
 } from 'react-native-reanimated';
+import { colors, spacing, typography, radius } from '@/constants/theme';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-export const EmailCard: React.FC<{ email: MockEmail; onPress?: () => void; index?: number }> = ({ email, onPress, index = 0 }) => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+export const EmailCard: React.FC<{ email: MockEmail; onPress?: () => void; index?: number }> = ({ 
+  email, 
+  onPress, 
+  index = 0 
+}) => {
   const translateX = useSharedValue(0);
   const scale = useSharedValue(1);
 
@@ -44,14 +46,14 @@ export const EmailCard: React.FC<{ email: MockEmail; onPress?: () => void; index
   };
 
   const getCategoryColor = (category?: string) => {
-    const colors = {
-      delivery: '#3B82F6',
-      travel: '#10B981',
-      appointment: '#F59E0B',
-      ticket: '#EF4444',
-      subscription: '#8B5CF6',
+    const categoryColors = {
+      delivery: colors.accent,
+      travel: colors.accentSecondary,
+      appointment: colors.info,
+      ticket: colors.warning,
+      subscription: colors.accentSecondary,
     };
-    return category ? colors[category as keyof typeof colors] || '#6B7280' : '#6B7280';
+    return category ? categoryColors[category as keyof typeof categoryColors] || colors.neutral : colors.neutral;
   };
 
   const formatDate = (date: Date) => {
@@ -70,13 +72,21 @@ export const EmailCard: React.FC<{ email: MockEmail; onPress?: () => void; index
     }
   };
 
+  const categoryColor = getCategoryColor(email.category);
+
   return (
     <Animated.View
       entering={FadeInRight.delay(index * 100).springify()}
       exiting={FadeOutLeft.springify()}
       style={[styles.container, animatedStyle]}
     >
-      <GlassCard pressable style={[styles.card, isDark && styles.darkCard]}>
+      <ThemedCard
+        variant="elevated"
+        pressable
+        onPress={onPress}
+        accentLeft={!email.isProcessed}
+        style={styles.card}
+      >
         <AnimatedTouchable 
           style={styles.content} 
           onPress={onPress}
@@ -88,7 +98,7 @@ export const EmailCard: React.FC<{ email: MockEmail; onPress?: () => void; index
             <Animated.View 
               style={[
                 styles.avatar, 
-                { backgroundColor: getCategoryColor(email.category) }
+                { backgroundColor: categoryColor }
               ]}
               entering={FadeInRight.delay(index * 150 + 200).springify()}
             >
@@ -98,125 +108,125 @@ export const EmailCard: React.FC<{ email: MockEmail; onPress?: () => void; index
             </Animated.View>
             
             <View style={styles.senderInfo}>
-              <Text style={[styles.sender, isDark && styles.darkText]} numberOfLines={1}>
+              <Text style={styles.sender} numberOfLines={1}>
                 {email.sender}
               </Text>
-              <Text style={[styles.date, isDark && styles.darkSubtext]}>
+              <Text style={styles.date}>
                 {formatDate(email.receivedAt)}
               </Text>
             </View>
 
             {email.isProcessed && (
               <Animated.View 
-                style={[styles.processedBadge, { backgroundColor: '#10B981' }]}
+                style={[styles.processedBadge, { backgroundColor: colors.success }]}
                 entering={FadeInRight.delay(index * 150 + 300).springify()}
               >
-                <Text style={[styles.processedText, { color: '#FFFFFF' }]}>✓</Text>
+                <Text style={styles.processedText}>✓</Text>
               </Animated.View>
             )}
           </View>
 
-          <Text style={[styles.subject, isDark && styles.darkText]} numberOfLines={2}>
+          <Text style={styles.subject} numberOfLines={2}>
             {email.subject}
           </Text>
           
-          <Text style={[styles.preview, isDark && styles.darkSubtext]} numberOfLines={3}>
+          <Text style={styles.preview} numberOfLines={3}>
             {email.content}
           </Text>
+
+          {email.category && (
+            <View style={styles.footer}>
+              <View style={[styles.categoryBadge, { backgroundColor: categoryColor + '30' }]}>
+                <Text style={[styles.categoryText, { color: categoryColor }]}>
+                  {email.category}
+                </Text>
+              </View>
+            </View>
+          )}
         </AnimatedTouchable>
-      </GlassCard>
+      </ThemedCard>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
   },
   card: {
     overflow: 'hidden',
   },
-  darkCard: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-  },
   content: {
-    padding: 16,
+    padding: spacing.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   avatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: radius.full,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   avatarText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.textOnAccent,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
   },
   senderInfo: {
     flex: 1,
   },
   sender: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 2,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   date: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
   },
   processedBadge: {
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: radius.full,
     justifyContent: 'center',
     alignItems: 'center',
   },
   processedText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  body: {
-    marginBottom: 12,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
   },
   subject: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   preview: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: typography.fontSize.sm * typography.lineHeight.normal,
   },
   footer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
+    marginTop: spacing.sm,
   },
   categoryBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
   },
   categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
     textTransform: 'capitalize',
-  },
-  darkText: {
-    color: '#F9FAFB',
-  },
-  darkSubtext: {
-    color: '#9CA3AF',
   },
 });

@@ -46,9 +46,15 @@ const AnimatedTabButton: React.FC<BottomTabBarButtonProps> = ({ children, onPres
   );
 };
 
-const TabBarBackground = () => (
-  <View style={{ flex: 1, backgroundColor: Platform.OS === 'ios' ? 'rgba(255,255,255,0.85)' : 'rgba(17,24,39,0.85)' }} />
-);
+const TabBarBackground = () => {
+  const colorScheme = useColorScheme();
+  return (
+    <View style={{ 
+      flex: 1, 
+      backgroundColor: Colors[colorScheme ?? 'light'].background 
+    }} />
+  );
+};
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -56,16 +62,17 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#8B5CF6',
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tabIconSelected,
         tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,
         headerShown: false,
         tabBarButton: (props) => <AnimatedTabButton {...props} />,
         tabBarBackground: TabBarBackground,
         tabBarStyle: {
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
+          backgroundColor: Colors[colorScheme ?? 'light'].background,
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(201, 201, 201, 0.1)',
+          elevation: 8,
+          shadowOpacity: 0.1,
           height: Platform.OS === 'ios' ? 88 : 68,
           paddingBottom: Platform.OS === 'ios' ? 28 : 8,
         },

@@ -1,34 +1,36 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import Animated, { FadeInRight, FadeOutLeft } from 'react-native-reanimated';
 import { Event } from '../types';
-import { GlassCard } from './ui/GlassCard';
-import { useTheme } from '../contexts/ThemeContext';
+import { ThemedCard } from './ui/ThemedCard';
+import { colors, spacing, typography, radius } from '@/constants/theme';
 
 interface EventCardProps {
   event: Event;
   onPress?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  index?: number;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ 
   event, 
   onPress, 
   onEdit, 
-  onDelete 
+  onDelete,
+  index = 0
 }) => {
-  const { isDark } = useTheme();
-
   const getCategoryColor = (category: Event['category']) => {
-    const colors = {
-      delivery: '#3B82F6', // blue
-      travel: '#10B981', // green
-      appointment: '#F59E0B', // amber
-      ticket: '#EF4444', // red
-      subscription: '#8B5CF6', // purple
+    // Use accent colors for categories, with golden as primary
+    const categoryColors = {
+      delivery: colors.accent,           // Golden for deliveries
+      travel: colors.accentSecondary,     // Light sand for travel
+      appointment: colors.info,           // Blue for appointments
+      ticket: colors.warning,            // Amber for tickets
+      subscription: colors.accentSecondary, // Sand for subscriptions
     };
-    return colors[category] || '#6B7280';
+    return categoryColors[category] || colors.neutral;
   };
 
   const formatDate = (date: Date) => {
@@ -70,162 +72,188 @@ export const EventCard: React.FC<EventCardProps> = ({
     </View>
   );
 
-  return (
-    <Swipeable
-      renderRightActions={renderRightActions}
-      renderLeftActions={renderLeftActions}
-      containerStyle={styles.swipeContainer}
-    >
-      <GlassCard style={[styles.card, isDark && styles.darkCard]}>
-        <TouchableOpacity 
-          style={styles.content} 
-          onPress={onPress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.header}>
-            <View style={[styles.categoryIndicator, { backgroundColor: getCategoryColor(event.category) }]} />
-            <Text style={[styles.title, isDark && styles.darkText]} numberOfLines={2}>
-              {event.title}
-            </Text>
-          </View>
-          
-          <View style={styles.details}>
-            <Text style={[styles.date, isDark && styles.darkSubtext]}>
-              {formatDate(event.date)}
-            </Text>
-            
-            {event.location && (
-              <Text style={[styles.location, isDark && styles.darkSubtext]} numberOfLines={1}>
-                📍 {event.location}
-              </Text>
-            )}
-            
-            {event.trackingId && (
-              <Text style={[styles.tracking, isDark && styles.darkSubtext]}>
-                🏷️ Tracking: {event.trackingId}
-              </Text>
-            )}
-          </View>
+  const categoryColor = getCategoryColor(event.category);
+  const isImportant = event.status === 'approved' || event.category === 'delivery';
 
-          <View style={styles.footer}>
-            <View style={[styles.statusBadge, { backgroundColor: getCategoryColor(event.category) + '20' }]}>
-              <Text style={[styles.statusText, { color: getCategoryColor(event.category) }]}>
-                {event.category}
+  return (
+    <Animated.View
+      entering={FadeInRight.delay(index * 50).springify()}
+      exiting={FadeOutLeft.springify()}
+      style={styles.swipeContainer}
+    >
+      <Swipeable
+        renderRightActions={renderRightActions}
+        renderLeftActions={renderLeftActions}
+        containerStyle={styles.swipeContainer}
+      >
+        <ThemedCard
+          variant="elevated"
+          pressable
+          onPress={onPress}
+          accentLeft={isImportant}
+          style={styles.card}
+        >
+          <View style={styles.content}>
+            <View style={styles.header}>
+              <View style={[styles.categoryIndicator, { backgroundColor: categoryColor }]} />
+              <View style={styles.titleContainer}>
+                <Text style={styles.title} numberOfLines={2}>
+                  {event.title}
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.details}>
+              <Text style={styles.date}>
+                {formatDate(event.date)}
+              </Text>
+              
+              {event.location && (
+                <Text style={styles.location} numberOfLines={1}>
+                  📍 {event.location}
+                </Text>
+              )}
+              
+              {event.trackingId && (
+                <Text style={styles.tracking}>
+                  🏷️ Tracking: {event.trackingId}
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.footer}>
+              <View style={[styles.statusBadge, { backgroundColor: categoryColor + '40' }]}>
+                <Text style={[styles.statusText, { 
+                  color: categoryColor,
+                  fontWeight: typography.fontWeight.bold,
+                }]}>
+                  {event.category}
+                </Text>
+              </View>
+              <View style={[styles.statusDot, { backgroundColor: 
+                event.status === 'approved' ? colors.success : 
+                event.status === 'rejected' ? colors.error : 
+                colors.neutral 
+              }]} />
+              <Text style={styles.statusLabel}>
+                {event.status}
               </Text>
             </View>
-            <Text style={[styles.statusLabel, isDark && styles.darkSubtext]}>
-              {event.status}
-            </Text>
           </View>
-        </TouchableOpacity>
-      </GlassCard>
-    </Swipeable>
+        </ThemedCard>
+      </Swipeable>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   swipeContainer: {
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   card: {
-    marginHorizontal: 16,
-  },
-  darkCard: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    marginHorizontal: spacing.lg,
   },
   content: {
-    padding: 16,
+    padding: spacing.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   categoryIndicator: {
     width: 4,
     height: 40,
-    borderRadius: 2,
-    marginRight: 12,
+    borderRadius: radius.sm,
+    marginRight: spacing.md,
     marginTop: 4,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+  titleContainer: {
     flex: 1,
-    lineHeight: 24,
   },
-  darkText: {
-    color: '#F9FAFB',
+  title: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    flex: 1,
+    lineHeight: typography.fontSize.lg * typography.lineHeight.normal,
   },
   details: {
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   date: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-    marginBottom: 4,
+    fontSize: typography.fontSize.base,
+    color: colors.accentSecondary,
+    fontWeight: typography.fontWeight.medium,
+    marginBottom: spacing.xs,
   },
   location: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 2,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
   },
   tracking: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  darkSubtext: {
-    color: '#9CA3AF',
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: spacing.sm,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
     textTransform: 'capitalize',
   },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginLeft: spacing.sm,
+  },
   statusLabel: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: typography.fontSize.sm,
+    color: colors.textTertiary,
     textTransform: 'capitalize',
+    marginLeft: 'auto',
   },
   rightActions: {
     flexDirection: 'row',
-    marginLeft: -8,
+    marginLeft: -spacing.sm,
+    alignItems: 'center',
   },
   leftActions: {
     flexDirection: 'row',
-    marginRight: -8,
+    marginRight: -spacing.sm,
+    alignItems: 'center',
   },
   actionButton: {
     width: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 4,
-    borderRadius: 16,
+    marginHorizontal: spacing.xs,
+    borderRadius: radius.lg,
+    minHeight: 44,
   },
   editButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: colors.success,
   },
   deleteButton: {
-    backgroundColor: '#EF4444',
+    backgroundColor: colors.error,
   },
   statusButton: {
-    backgroundColor: '#6B7280',
+    backgroundColor: colors.neutral,
   },
   actionText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
+    color: colors.textPrimary,
+    fontWeight: typography.fontWeight.semibold,
+    fontSize: typography.fontSize.sm,
   },
 });

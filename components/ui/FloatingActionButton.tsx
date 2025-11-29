@@ -1,12 +1,13 @@
 
+import { colors } from '@/constants/theme';
 import React from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSequence,
-    withSpring,
-    withTiming
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming
 } from 'react-native-reanimated';
 import { IconSymbol, type IconSymbolName } from './icon-symbol';
 
@@ -55,7 +56,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
       onPress={handlePress}
       activeOpacity={0.9}
     >
-      <IconSymbol name={icon} size={24} color="#FFFFFF" />
+      <IconSymbol name={icon} size={24} color={colors.textOnAccent} />
     </AnimatedTouchable>
   );
 };
@@ -65,10 +66,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 100,
     right: 20,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8B5CF6',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,

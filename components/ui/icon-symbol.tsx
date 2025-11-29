@@ -24,6 +24,9 @@ const MAPPING = {
   'sparkles': 'auto-awesome',
   'square.grid.2x2': 'grid-view',
   'gear': 'settings',
+  'checkmark.circle.fill': 'check-circle',
+  'exclamationmark.triangle.fill': 'warning',
+  'info.circle.fill': 'info',
 } as IconMapping;
 
 /**

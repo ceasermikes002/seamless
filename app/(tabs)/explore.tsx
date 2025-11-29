@@ -1,9 +1,11 @@
 import { EmailCard } from '@/components/EmailCard';
-import { GlassCard } from '@/components/ui/GlassCard';
+import { ThemedCard } from '@/components/ui/ThemedCard';
+import { AppBar } from '@/components/ui/AppBar';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmails } from '@/contexts/EmailContext';
 import { useEvents } from '@/contexts/EventContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
 import { CactusAI } from '@/services/cactus';
 import { GmailService } from '@/services/gmail';
 import { LinkingService } from '@/services/linking';
@@ -12,19 +14,18 @@ import { Storage } from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { RefreshControl, ScrollView, StyleSheet, Text, View, Platform } from 'react-native';
+import { colors, spacing, typography, maxContentWidth } from '@/constants/theme';
 
 export default function EmailInboxScreen() {
   const router = useRouter();
   const { emails, loading, refreshEmails, processEmail } = useEmails();
   const { events, addEvent, editEvent } = useEvents();
-  const { isDark } = useTheme();
   const { isAuthenticated, accessToken, signIn } = useAuth();
+  const { showError, showSuccess, showInfo } = useToast();
   const [refreshing, setRefreshing] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -34,45 +35,55 @@ export default function EmailInboxScreen() {
 
   const handleEmailPress = async (email: any) => {
     if (!CactusAI.isAvailable()) {
-      alert('Local AI requires a native dev build. Run: npx expo start --dev-client and open your Dev Client.');
+      showError('Local AI requires a native dev build. Run: npx expo start --dev-client');
       return;
     }
-    const parsedEvent = await CactusAI.extract(email);
-    processEmail(email.id);
-    router.push({ pathname: '/parse/[emailId]', params: { emailId: email.id, parsedEvent: JSON.stringify(parsedEvent) } });
+    try {
+      const parsedEvent = await CactusAI.extract(email);
+      processEmail(email.id);
+      router.push({ pathname: '/parse/[emailId]', params: { emailId: email.id, parsedEvent: JSON.stringify(parsedEvent) } });
+    } catch (error: any) {
+      showError(error?.message || 'Failed to parse email');
+    }
   };
 
   const handleQuickParse = async (email: any) => {
     if (!CactusAI.isAvailable()) {
-      alert('Local AI requires a native dev build. Run: npx expo start --dev-client and open your Dev Client.');
+      showError('Local AI requires a native dev build. Run: npx expo start --dev-client');
       return;
     }
-    const parsedEvent = await CactusAI.extract(email);
-    const match = await LinkingService.findMatch(email, parsedEvent, events);
-    if (match) {
-      editEvent(match.id, {
-        title: parsedEvent.title || match.title,
-        date: parsedEvent.date || match.date,
-        location: parsedEvent.location || match.location,
-        trackingId: parsedEvent.trackingId || match.trackingId,
-      });
+    try {
+      const parsedEvent = await CactusAI.extract(email);
+      const match = await LinkingService.findMatch(email, parsedEvent, events);
+      if (match) {
+        editEvent(match.id, {
+          title: parsedEvent.title || match.title,
+          date: parsedEvent.date || match.date,
+          location: parsedEvent.location || match.location,
+          trackingId: parsedEvent.trackingId || match.trackingId,
+        });
+        processEmail(email.id);
+        showSuccess('Event updated successfully');
+        return;
+      }
+      const newEvent: Event = {
+        id: Date.now().toString(),
+        title: parsedEvent.title,
+        date: parsedEvent.date,
+        location: parsedEvent.location,
+        category: parsedEvent.category as Event['category'],
+        status: 'approved',
+        trackingId: parsedEvent.trackingId,
+        extractedFrom: email.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      addEvent(newEvent);
       processEmail(email.id);
-      return;
+      showSuccess('Event created successfully');
+    } catch (error: any) {
+      showError(error?.message || 'Failed to parse email');
     }
-    const newEvent: Event = {
-      id: Date.now().toString(),
-      title: parsedEvent.title,
-      date: parsedEvent.date,
-      location: parsedEvent.location,
-      category: parsedEvent.category as Event['category'],
-      status: 'approved',
-      trackingId: parsedEvent.trackingId,
-      extractedFrom: email.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    addEvent(newEvent);
-    processEmail(email.id);
   };
 
   const unprocessedEmails = emails.filter(email => !email.isProcessed);
@@ -91,15 +102,13 @@ export default function EmailInboxScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, isDark && styles.darkContainer]}>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <View style={styles.header}>
-          <Text style={[styles.title, isDark && styles.darkText]}>Email Inbox</Text>
-        </View>
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        <AppBar title="Emails" />
         <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, isDark && styles.darkSubtext]}>Loading emails...</Text>
+          <Text style={styles.loadingText}>Loading emails...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -111,7 +120,6 @@ export default function EmailInboxScreen() {
       return;
     }
     setFetching(true);
-    setFetchError(null);
     try {
       const ids = await GmailService.listMessages(accessToken);
       const items = await Promise.all(ids.slice(0, 10).map(id => GmailService.getMessage(accessToken, id)));
@@ -124,199 +132,195 @@ export default function EmailInboxScreen() {
         }
       }
       setSummaries(map);
+      showSuccess(`Fetched ${items.length} email${items.length !== 1 ? 's' : ''} from Gmail`);
     } catch (e: any) {
-      setFetchError(e?.message || 'Failed to fetch Gmail. Check scopes and API enablement.');
+      showError(e?.message || 'Failed to fetch Gmail. Check scopes and API enablement.');
     } finally {
       setFetching(false);
     }
   };
 
-
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.darkContainer]}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <AppBar 
+        title="Emails" 
+        rightAction={emails.length > 0 ? {
+          label: `${emails.length}`,
+          onPress: () => {},
+        } : undefined}
+      />
       
-      <View style={styles.header}>
-        <Text style={[styles.title, isDark && styles.darkText]}>Email Inbox</Text>
-        <Text style={[styles.subtitle, isDark && styles.darkSubtext]}>
-          {emails.length} email{emails.length !== 1 ? 's' : ''} • {unprocessedEmails.length} new
-        </Text>
-      </View>
-
-      <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-        <TouchableOpacity 
-          style={[styles.quickParseButton, isDark && styles.darkQuickParseButton]} 
+      <View style={styles.actionBar}>
+        <PrimaryButton
+          title={fetching ? 'Fetching...' : (isAuthenticated ? 'Fetch Gmail' : 'Sign In with Google')}
           onPress={handleFetchFromGmail}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.quickParseText, isDark && styles.darkQuickParseText]}>
-            {fetching ? 'Fetching...' : (isAuthenticated ? 'Fetch Gmail' : 'Sign In with Google')}
-          </Text>
-        </TouchableOpacity>
+          disabled={fetching}
+          size="sm"
+          fullWidth
+        />
       </View>
 
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={isDark ? ['#8B5CF6'] : ['#6B46C1']}
-            tintColor={isDark ? '#8B5CF6' : '#6B46C1'}
+            colors={[colors.accent]}
+            tintColor={colors.accent}
           />
         }
       >
-        {fetchError && (
-          <View style={{ marginHorizontal: 20, marginTop: 12 }}>
-            <GlassCard style={[styles.emptyCard, isDark && styles.darkEmptyCard]}>
-              <View style={styles.emptyContent}>
-                <Text style={[styles.emptyText, isDark && styles.darkSubtext]}>Error: {fetchError}</Text>
-                <Text style={[styles.emptyText, isDark && styles.darkSubtext]}>Ensure Gmail API is enabled, scopes are approved, and your account is a Test User.</Text>
+        <View style={styles.content}>
+          {!CactusAI.isAvailable() && (
+            <ThemedCard variant="outlined" style={styles.infoCard}>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoText}>
+                  Local AI requires a native dev build. Use Dev Client.
+                </Text>
+                <Text style={styles.infoText}>
+                  Run: npx expo start --dev-client
+                </Text>
               </View>
-            </GlassCard>
-          </View>
-        )}
-        {!CactusAI.isAvailable() && (
-          <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-            <GlassCard style={[styles.emptyCard, isDark && styles.darkEmptyCard]}>
-              <View style={styles.emptyContent}>
-                <Text style={[styles.emptyText, isDark && styles.darkSubtext]}>Local AI requires a native dev build. Use Dev Client.</Text>
-                <Text style={[styles.emptyText, isDark && styles.darkSubtext]}>Run: npx expo start --dev-client</Text>
+            </ThemedCard>
+          )}
+          
+          {unprocessedEmails.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>New Emails</Text>
+                <View style={[styles.countBadge, { backgroundColor: colors.accent + '30' }]}>
+                  <Text style={[styles.countText, { color: colors.accent }]}>
+                    {unprocessedEmails.length}
+                  </Text>
+                </View>
               </View>
-            </GlassCard>
-          </View>
-        )}
-        {unprocessedEmails.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, isDark && styles.darkText]}>New Emails</Text>
-              <Text style={[styles.sectionCount, isDark && styles.darkSubtext]}>
-                {unprocessedEmails.length}
-              </Text>
+              {unprocessedEmails.map((email, index) => (
+                <View key={email.id} style={styles.emailWrapper}>
+                  <EmailCard
+                    email={email}
+                    onPress={() => handleEmailPress(email)}
+                    index={index}
+                  />
+                  {summaries[email.id] && (
+                    <Text style={styles.summaryText}>{summaries[email.id]}</Text>
+                  )}
+                  <View style={styles.quickParseWrapper}>
+                    <PrimaryButton
+                      title="Quick Parse"
+                      onPress={() => handleQuickParse(email)}
+                      size="sm"
+                      fullWidth
+                    />
+                  </View>
+                </View>
+              ))}
             </View>
-            {unprocessedEmails.map(email => (
-              <View key={email.id} style={styles.emailWrapper}>
+          )}
+
+          {processedEmails.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Processed</Text>
+                <View style={[styles.countBadge, { backgroundColor: colors.accentSecondary + '30' }]}>
+                  <Text style={[styles.countText, { color: colors.accentSecondary }]}>
+                    {processedEmails.length}
+                  </Text>
+                </View>
+              </View>
+              {processedEmails.map((email, index) => (
                 <EmailCard
+                  key={email.id}
                   email={email}
                   onPress={() => handleEmailPress(email)}
+                  index={index}
                 />
-                {summaries[email.id] && (
-                  <Text style={{ marginHorizontal: 28, color: isDark ? '#9CA3AF' : '#6B7280' }}>{summaries[email.id]}</Text>
-                )}
-                <TouchableOpacity
-                  style={[styles.quickParseButton, isDark && styles.darkQuickParseButton]}
-                  onPress={() => handleQuickParse(email)}
-                >
-                  <Text style={[styles.quickParseText, isDark && styles.darkQuickParseText]}>
-                    Quick Parse
-                  </Text>
-                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {emails.length === 0 && (
+            <ThemedCard variant="outlined" style={styles.emptyCard}>
+              <View style={styles.emptyContent}>
+                <Text style={styles.emptyTitle}>No emails</Text>
+                <Text style={styles.emptyText}>
+                  Fetch Gmail to load your inbox.
+                </Text>
               </View>
-            ))}
-          </View>
-        )}
-
-        {processedEmails.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, isDark && styles.darkText]}>Processed</Text>
-              <Text style={[styles.sectionCount, isDark && styles.darkSubtext]}>
-                {processedEmails.length}
-              </Text>
-            </View>
-            {processedEmails.map(email => (
-              <EmailCard
-                key={email.id}
-                email={email}
-                onPress={() => handleEmailPress(email)}
-              />
-            ))}
-          </View>
-        )}
-
-        {emails.length === 0 && (
-          <GlassCard style={[styles.emptyCard, isDark && styles.darkEmptyCard]}>
-            <View style={styles.emptyContent}>
-              <Text style={[styles.emptyTitle, isDark && styles.darkText]}>No emails</Text>
-              <Text style={[styles.emptyText, isDark && styles.darkSubtext]}>Fetch Gmail to load your inbox.</Text>
-            </View>
-          </GlassCard>
-        )}
+            </ThemedCard>
+          )}
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.background,
   },
-  darkContainer: {
-    backgroundColor: '#111827',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
+  actionBar: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  content: {
+    flex: 1,
+    ...(Platform.OS === 'web' && {
+      maxWidth: maxContentWidth,
+      width: '100%',
+      alignSelf: 'center',
+      paddingHorizontal: spacing.lg,
+    }),
+  },
   section: {
-    marginBottom: 24,
+    marginBottom: spacing.xl,
+    marginTop: spacing.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 12,
-    marginTop: 16,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
   },
-  sectionCount: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
+  countBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 12,
+  },
+  countText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   emailWrapper: {
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
-  quickParseButton: {
-    backgroundColor: '#6B46C1',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 36,
+  summaryText: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
-  darkQuickParseButton: {
-    backgroundColor: '#8B5CF6',
-  },
-  quickParseText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  darkQuickParseText: {
-    color: '#FFFFFF',
+  quickParseWrapper: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
   },
   loadingContainer: {
     flex: 1,
@@ -324,36 +328,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
+  },
+  errorCard: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  errorContent: {
+    padding: spacing.lg,
+  },
+  errorTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.error,
+    marginBottom: spacing.sm,
+  },
+  errorText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
+    marginBottom: spacing.xs,
+  },
+  infoCard: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  infoContent: {
+    padding: spacing.lg,
+  },
+  infoText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: typography.fontSize.sm * typography.lineHeight.relaxed,
+    marginBottom: spacing.xs,
   },
   emptyCard: {
-    marginHorizontal: 20,
-    marginVertical: 40,
-  },
-  darkEmptyCard: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing['3xl'],
   },
   emptyContent: {
-    padding: 24,
+    padding: spacing['2xl'],
     alignItems: 'center',
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
-  },
-  darkText: {
-    color: '#F9FAFB',
-  },
-  darkSubtext: {
-    color: '#9CA3AF',
+    lineHeight: typography.fontSize.base * typography.lineHeight.relaxed,
   },
 });

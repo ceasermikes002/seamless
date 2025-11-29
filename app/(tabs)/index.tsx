@@ -1,18 +1,19 @@
 import { EventCard } from '@/components/EventCard';
-import { GlassCard } from '@/components/ui/GlassCard';
+import { ThemedCard } from '@/components/ui/ThemedCard';
+import { AppBar } from '@/components/ui/AppBar';
+import { FloatingActionButton } from '@/components/ui/FloatingActionButton';
 import { useEvents } from '@/contexts/EventContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { Event } from '@/types';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, spacing, typography, maxContentWidth } from '@/constants/theme';
 
 export default function EventsListScreen() {
   const router = useRouter();
   const { events, loading, refreshEvents, removeEvent } = useEvents();
-  const { isDark } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -34,7 +35,6 @@ export default function EventsListScreen() {
   };
 
   const handleAddEvent = () => {
-    // Create a new empty event
     const newEvent: Event = {
       id: Date.now().toString(),
       title: 'New Event',
@@ -67,144 +67,166 @@ export default function EventsListScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, isDark && styles.darkContainer]}>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <View style={styles.header}>
-          <Text style={[styles.title, isDark && styles.darkText]}>Events</Text>
-        </View>
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        <AppBar title="Events" />
         <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, isDark && styles.darkSubtext]}>Loading events...</Text>
+          <Text style={styles.loadingText}>Loading events...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.darkContainer]}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <AppBar title="Events" showLogo />
       
-      <View style={styles.header}>
-        <Text style={[styles.title, isDark && styles.darkText]}>Events</Text>
-        <Text style={[styles.subtitle, isDark && styles.darkSubtext]}>
-          {events.length} total event{events.length !== 1 ? 's' : ''}
-        </Text>
-      </View>
-
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={isDark ? ['#8B5CF6'] : ['#6B46C1']}
-            tintColor={isDark ? '#8B5CF6' : '#6B46C1'}
+            colors={[colors.accent]}
+            tintColor={colors.accent}
           />
         }
       >
-        {todayEvents.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, isDark && styles.darkText]}>Today</Text>
-            {todayEvents.map(event => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onPress={() => handleEventPress(event)}
-                onEdit={() => handleEventEdit(event)}
-                onDelete={() => handleEventDelete(event.id)}
-              />
-            ))}
-          </View>
-        )}
-
-        {upcomingEvents.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, isDark && styles.darkText]}>Upcoming</Text>
-            {upcomingEvents.map(event => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onPress={() => handleEventPress(event)}
-                onEdit={() => handleEventEdit(event)}
-                onDelete={() => handleEventDelete(event.id)}
-              />
-            ))}
-          </View>
-        )}
-
-        {pastEvents.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, isDark && styles.darkText]}>Past</Text>
-            {pastEvents.map(event => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onPress={() => handleEventPress(event)}
-                onEdit={() => handleEventEdit(event)}
-                onDelete={() => handleEventDelete(event.id)}
-              />
-            ))}
-          </View>
-        )}
-
-        {events.length === 0 && (
-          <GlassCard style={[styles.emptyCard, isDark && styles.darkEmptyCard]}>
-            <View style={styles.emptyContent}>
-              <Text style={[styles.emptyTitle, isDark && styles.darkText]}>No events yet</Text>
-              <Text style={[styles.emptyText, isDark && styles.darkSubtext]}>
-                Events will appear here when you parse emails or add them manually.
-              </Text>
+        <View style={styles.content}>
+          {todayEvents.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Today</Text>
+                <View style={[styles.countBadge, { backgroundColor: colors.accentSecondary + '30' }]}>
+                  <Text style={[styles.countText, { color: colors.accentSecondary }]}>
+                    {todayEvents.length}
+                  </Text>
+                </View>
+              </View>
+              {todayEvents.map((event, index) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  index={index}
+                  onPress={() => handleEventPress(event)}
+                  onEdit={() => handleEventEdit(event)}
+                  onDelete={() => handleEventDelete(event.id)}
+                />
+              ))}
             </View>
-          </GlassCard>
-        )}
+          )}
+
+          {upcomingEvents.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Upcoming</Text>
+                <View style={[styles.countBadge, { backgroundColor: colors.accentSecondary + '30' }]}>
+                  <Text style={[styles.countText, { color: colors.accentSecondary }]}>
+                    {upcomingEvents.length}
+                  </Text>
+                </View>
+              </View>
+              {upcomingEvents.map((event, index) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  index={index}
+                  onPress={() => handleEventPress(event)}
+                  onEdit={() => handleEventEdit(event)}
+                  onDelete={() => handleEventDelete(event.id)}
+                />
+              ))}
+            </View>
+          )}
+
+          {pastEvents.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Past</Text>
+                <View style={[styles.countBadge, { backgroundColor: colors.accentSecondary + '30' }]}>
+                  <Text style={[styles.countText, { color: colors.accentSecondary }]}>
+                    {pastEvents.length}
+                  </Text>
+                </View>
+              </View>
+              {pastEvents.map((event, index) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  index={index}
+                  onPress={() => handleEventPress(event)}
+                  onEdit={() => handleEventEdit(event)}
+                  onDelete={() => handleEventDelete(event.id)}
+                />
+              ))}
+            </View>
+          )}
+
+          {events.length === 0 && (
+            <ThemedCard variant="outlined" style={styles.emptyCard}>
+              <View style={styles.emptyContent}>
+                <Text style={styles.emptyTitle}>No events yet</Text>
+                <Text style={styles.emptyText}>
+                  Seamless will show parsed events here as they appear.
+                </Text>
+              </View>
+            </ThemedCard>
+          )}
+        </View>
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={handleAddEvent}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+      <FloatingActionButton onPress={handleAddEvent} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  darkContainer: {
-    backgroundColor: '#111827',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  darkHeader: {
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  content: {
+    flex: 1,
+    ...(Platform.OS === 'web' && {
+      maxWidth: maxContentWidth,
+      width: '100%',
+      alignSelf: 'center',
+      paddingHorizontal: spacing.lg,
+    }),
+  },
   section: {
-    marginBottom: 24,
+    marginBottom: spacing.xl,
+    marginTop: spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginHorizontal: 20,
-    marginBottom: 12,
-    marginTop: 16,
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  countBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 12,
+  },
+  countText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   loadingContainer: {
     flex: 1,
@@ -212,57 +234,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
   },
   emptyCard: {
-    marginHorizontal: 20,
-    marginVertical: 40,
-  },
-  darkEmptyCard: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing['3xl'],
   },
   emptyContent: {
-    padding: 24,
+    padding: spacing['2xl'],
     alignItems: 'center',
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#6B46C1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabText: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: '300',
-  },
-  darkText: {
-    color: '#F9FAFB',
-  },
-  darkSubtext: {
-    color: '#9CA3AF',
+    lineHeight: typography.fontSize.base * typography.lineHeight.relaxed,
   },
 });
