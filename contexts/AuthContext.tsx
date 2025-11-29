@@ -2,7 +2,7 @@ import { OAuthConfig } from '@/services/oauthConfig';
 import { Secure } from '@/utils/secure';
 import Constants from 'expo-constants';
 import React, { createContext, useContext, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 
 type AuthContextType = {
   isAuthenticated: boolean;
@@ -58,7 +58,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const redirectUriWeb = (typeof window !== 'undefined' && (process.env.EXPO_PUBLIC_GOOGLE_REDIRECT_URI_WEB || window.location.origin)) || redirectUriBase;
     const clientId = Platform.OS === 'web'
       ? OAuthConfig.clientIdWeb
-      : OAuthConfig.clientIdWeb;
+      : Platform.OS === 'android'
+      ? OAuthConfig.clientIdAndroid || OAuthConfig.clientIdWeb
+      : OAuthConfig.clientIdIOS || OAuthConfig.clientIdWeb;
     if (!clientId) {
       console.error('Missing Google OAuth client IDs in app.json extra.googleOauth');
       return;
@@ -78,23 +80,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const AuthSession = await getAuthSessionAsync();
-    if (!AuthSession?.startAsync) {
-      console.warn('expo-auth-session startAsync unavailable on native. Build a Dev Client.');
+    
+    if (!AuthSession?.AuthRequest) {
+      console.warn('expo-auth-session module not available on native. Build a Dev Client.');
       return;
     }
-    const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
-    const params = new URLSearchParams({
-      client_id: clientId!,
-      redirect_uri: redirectUri,
-      response_type: 'token',
-      scope: 'openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar',
-      include_granted_scopes: 'true',
-      prompt: 'consent',
+    const redirectUri = AuthSession.makeRedirectUri({ scheme: appScheme, useProxy: Constants.appOwnership === 'expo' });
+    const request = new AuthSession.AuthRequest({
+      clientId: clientId || '',
+      responseType: AuthSession.ResponseType.Token,
+      scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar'],
+      redirectUri,
+      usePKCE: false,
     });
-    const authUrl = `${discovery.authorizationEndpoint}?${params.toString()}`;
-    const result: any = await AuthSession.startAsync({ authUrl, returnUrl: redirectUri });
-    if (result?.type === 'success' && result?.params?.access_token) {
-      const token = result.params.access_token as string;
+    const result = await request.promptAsync(discovery);
+    if (result.type === 'success' && (result as any).params?.access_token) {
+      const token = (result as any).params.access_token as string;
       setAccessToken(token);
       await Secure.setItem('google_access_token', token);
     }
@@ -122,3 +123,13 @@ const getAuthSessionAsync = async (): Promise<any | undefined> => {
     return undefined;
   }
 };
+const getWebBrowserAsync = async (): Promise<any | undefined> => {
+  try {
+    const mod = await import('expo-web-browser');
+    return mod as any;
+  } catch {
+    return undefined;
+  }
+};
+
+
