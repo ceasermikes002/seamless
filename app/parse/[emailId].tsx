@@ -107,8 +107,15 @@ export default function ParsePreviewScreen() {
     );
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
+  const formatDate = (date: Date | string) => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+
+    if (isNaN(dateObj.getTime())) {
+      console.error('Invalid date provided to formatDate:', date);
+      return 'Invalid date';
+    }
+
+    return dateObj.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
