@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function EmailInboxScreen() {
   const router = useRouter();
   const { emails, loading, refreshEmails, processEmail } = useEmails();
-  const { addEvent, editEvent } = useEvents();
+  const { events, addEvent, editEvent } = useEvents();
   const { isDark } = useTheme();
   const { isAuthenticated, accessToken, signIn } = useAuth();
   const [refreshing, setRefreshing] = useState(false);

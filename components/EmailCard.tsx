@@ -1,16 +1,38 @@
+import { GlassCard } from '@/components/ui/GlassCard';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { MockEmail } from '@/types';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../contexts/ThemeContext';
-import { MockEmail } from '../types';
-import { GlassCard } from './ui/GlassCard';
+import Animated, {
+  FadeInRight,
+  FadeOutLeft,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring
+} from 'react-native-reanimated';
 
-interface EmailCardProps {
-  email: MockEmail;
-  onPress?: () => void;
-}
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-export const EmailCard: React.FC<EmailCardProps> = ({ email, onPress }) => {
-  const { isDark } = useTheme();
+export const EmailCard: React.FC<{ email: MockEmail; onPress?: () => void; index?: number }> = ({ email, onPress, index = 0 }) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const translateX = useSharedValue(0);
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { scale: scale.value }
+    ],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+  };
 
   const getSenderInitials = (sender: string) => {
     return sender
@@ -49,64 +71,71 @@ export const EmailCard: React.FC<EmailCardProps> = ({ email, onPress }) => {
   };
 
   return (
-    <GlassCard style={[styles.card, isDark && styles.darkCard]}>
-      <TouchableOpacity 
-        style={styles.content} 
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        <View style={styles.header}>
-          <View style={[styles.avatar, { backgroundColor: getCategoryColor(email.category) }]}>
-            <Text style={styles.avatarText}>
-              {getSenderInitials(email.sender)}
-            </Text>
-          </View>
-          
-          <View style={styles.senderInfo}>
-            <Text style={[styles.sender, isDark && styles.darkText]} numberOfLines={1}>
-              {email.sender}
-            </Text>
-            <Text style={[styles.date, isDark && styles.darkSubtext]}>
-              {formatDate(email.receivedAt)}
-            </Text>
-          </View>
-
-          {email.isProcessed && (
-            <View style={[styles.processedBadge, { backgroundColor: getCategoryColor(email.category) + '20' }]}>
-              <Text style={[styles.processedText, { color: getCategoryColor(email.category) }]}>
-                ✓
+    <Animated.View
+      entering={FadeInRight.delay(index * 100).springify()}
+      exiting={FadeOutLeft.springify()}
+      style={[styles.container, animatedStyle]}
+    >
+      <GlassCard pressable style={[styles.card, isDark && styles.darkCard]}>
+        <AnimatedTouchable 
+          style={styles.content} 
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.9}
+        >
+          <View style={styles.header}>
+            <Animated.View 
+              style={[
+                styles.avatar, 
+                { backgroundColor: getCategoryColor(email.category) }
+              ]}
+              entering={FadeInRight.delay(index * 150 + 200).springify()}
+            >
+              <Text style={styles.avatarText}>
+                {getSenderInitials(email.sender)}
+              </Text>
+            </Animated.View>
+            
+            <View style={styles.senderInfo}>
+              <Text style={[styles.sender, isDark && styles.darkText]} numberOfLines={1}>
+                {email.sender}
+              </Text>
+              <Text style={[styles.date, isDark && styles.darkSubtext]}>
+                {formatDate(email.receivedAt)}
               </Text>
             </View>
-          )}
-        </View>
 
-        <View style={styles.body}>
+            {email.isProcessed && (
+              <Animated.View 
+                style={[styles.processedBadge, { backgroundColor: '#10B981' }]}
+                entering={FadeInRight.delay(index * 150 + 300).springify()}
+              >
+                <Text style={[styles.processedText, { color: '#FFFFFF' }]}>✓</Text>
+              </Animated.View>
+            )}
+          </View>
+
           <Text style={[styles.subject, isDark && styles.darkText]} numberOfLines={2}>
             {email.subject}
           </Text>
-          <Text style={[styles.preview, isDark && styles.darkSubtext]} numberOfLines={2}>
+          
+          <Text style={[styles.preview, isDark && styles.darkSubtext]} numberOfLines={3}>
             {email.content}
           </Text>
-        </View>
-
-        {email.category && (
-          <View style={styles.footer}>
-            <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(email.category) + '20' }]}>
-              <Text style={[styles.categoryText, { color: getCategoryColor(email.category) }]}>
-                {email.category}
-              </Text>
-            </View>
-          </View>
-        )}
-      </TouchableOpacity>
-    </GlassCard>
+        </AnimatedTouchable>
+      </GlassCard>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  card: {
+    overflow: 'hidden',
   },
   darkCard: {
     backgroundColor: 'rgba(0, 0, 0, 0.2)',

@@ -16,13 +16,17 @@ const getCactus = (): any | undefined => {
 
 export const CactusAI = {
   isAvailable(): boolean {
+    if (Platform.OS === 'web') return true;
     const cactus = getCactus();
     return !!cactus?.CactusLM;
   },
   async complete(messages: { role: 'user' | 'assistant' | 'system'; content: string }[], onToken?: (t: string) => void) {
     const cactus = getCactus();
     if (!cactus?.CactusLM) {
-      throw new Error('Cactus SDK not available on this platform. Use a native development build.');
+      const last = messages[messages.length - 1]?.content || '';
+      const response = `Echo: ${last}`;
+      onToken?.(response);
+      return { response } as any;
     }
     const lm = CactusConfig.textModel ? new cactus.CactusLM({ model: CactusConfig.textModel }) : new cactus.CactusLM();
     await lm.download({});
@@ -34,7 +38,8 @@ export const CactusAI = {
   async summarize(text: string): Promise<string> {
     const cactus = getCactus();
     if (!cactus?.CactusLM) {
-      throw new Error('Cactus SDK not available on this platform. Use a native development build.');
+      const trimmed = text.replace(/\s+/g, ' ').trim();
+      return trimmed.length > 200 ? trimmed.slice(0, 200) + '…' : trimmed;
     }
     const lm = CactusConfig.textModel ? new cactus.CactusLM({ model: CactusConfig.textModel }) : new cactus.CactusLM();
     await lm.download({});
@@ -46,7 +51,35 @@ export const CactusAI = {
   async extract(email: { id: string; sender: string; subject: string; content: string }): Promise<ParsedEvent> {
     const cactus = getCactus();
     if (!cactus?.CactusLM) {
-      throw new Error('Cactus SDK not available on this platform. Use a native development build.');
+      const dateRegex = /(\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2} \w+ \d{4})/g;
+      const timeRegex = /(\d{1,2}:\d{2} (AM|PM|am|pm))/g;
+      const trackingRegex = /(tracking|order|confirmation|reference).*?[:#]\s*(\w+)/gi;
+      const detectCategory = (sender: string, content: string): string => {
+        const s = sender.toLowerCase();
+        const c = content.toLowerCase();
+        if (/amazon|fedex|ups|dhl|delivery|package|shipment/.test(s + ' ' + c)) return 'delivery';
+        if (/airline|flight|hotel|booking\.com|expedia|airbnb/.test(s + ' ' + c)) return 'travel';
+        if (/appointment|meeting|reservation|schedule/.test(s + ' ' + c)) return 'appointment';
+        if (/ticket|event|concert|movie|show|theater/.test(s + ' ' + c)) return 'ticket';
+        if (/subscription|renewal|billing|payment|invoice/.test(s + ' ' + c)) return 'subscription';
+        return 'appointment';
+      };
+      const extractedDate = email.content.match(dateRegex)?.[0];
+      const extractedTime = email.content.match(timeRegex)?.[0];
+      const trackingMatch = email.content.match(trackingRegex);
+      const trackingId = trackingMatch ? (trackingMatch as any)[0]?.replace(/.*[:#]\s*/,'') : undefined;
+      const locationRegex = /(?:at|location|venue|address)[:\s]*([A-Za-z0-9\s,]+?)(?:\.|\n|$)/i;
+      const extractedLocation = email.content.match(locationRegex)?.[1]?.trim();
+      const iso = extractedDate ? new Date(extractedDate) : new Date();
+      return {
+        title: email.subject.replace(/^(Re:|Fwd?:)\s*/i, ''),
+        date: iso,
+        location: extractedLocation,
+        category: detectCategory(email.sender, email.content),
+        confidence: 0.8,
+        trackingId,
+        rawExtractions: { date: extractedDate, time: extractedTime, location: extractedLocation, trackingId },
+      };
     }
     const tools = [
       {
@@ -106,7 +139,7 @@ ${email.content}`,
   async visionComplete(messages: { role: 'user' | 'assistant' | 'system'; content: string; images?: string[] }[]) {
     const cactus = getCactus();
     if (!cactus?.CactusLM) {
-      throw new Error('Cactus SDK not available on this platform. Use a native development build.');
+      return { response: 'Vision is not supported on web.' } as any;
     }
     const lm = new cactus.CactusLM({ model: CactusConfig.visionModel });
     await lm.download({});
@@ -118,7 +151,8 @@ ${email.content}`,
   async toolCall(messages: any[], tools: any[]) {
     const cactus = getCactus();
     if (!cactus?.CactusLM) {
-      throw new Error('Cactus SDK not available on this platform. Use a native development build.');
+      const last = messages[messages.length - 1]?.content || '';
+      return { response: `Echo: ${last}`, functionCalls: [] } as any;
     }
     const lm = CactusConfig.textModel ? new cactus.CactusLM({ model: CactusConfig.textModel }) : new cactus.CactusLM();
     await lm.download({});
@@ -130,7 +164,8 @@ ${email.content}`,
   async ragComplete(messages: any[], corpusDir: string) {
     const cactus = getCactus();
     if (!cactus?.CactusLM) {
-      throw new Error('Cactus SDK not available on this platform. Use a native development build.');
+      const last = messages[messages.length - 1]?.content || '';
+      return { response: `RAG not supported on web. Query: ${last}` } as any;
     }
     const lm = new cactus.CactusLM({ corpusDir });
     await lm.download({});
@@ -142,7 +177,10 @@ ${email.content}`,
   async embedText(text: string) {
     const cactus = getCactus();
     if (!cactus?.CactusLM) {
-      throw new Error('Cactus SDK not available on this platform. Use a native development build.');
+      const tokens = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+      const dim = 256; const vec = new Array<number>(dim).fill(0);
+      for (const t of tokens) { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; vec[h % dim] += 1; }
+      return { embedding: vec } as any;
     }
     const lm = CactusConfig.textModel ? new cactus.CactusLM({ model: CactusConfig.textModel }) : new cactus.CactusLM();
     await lm.download({});
@@ -154,7 +192,7 @@ ${email.content}`,
   async embedImage(imagePath: string) {
     const cactus = getCactus();
     if (!cactus?.CactusLM) {
-      throw new Error('Cactus SDK not available on this platform. Use a native development build.');
+      return { embedding: [] } as any;
     }
     const lm = new cactus.CactusLM({ model: CactusConfig.visionModel });
     await lm.download({});

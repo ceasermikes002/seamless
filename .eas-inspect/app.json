@@ -54,7 +54,7 @@
         "clientIdWeb": "50708049304-9mpbtpdv0nvtafuf6jqe1s3tttu8t88e.apps.googleusercontent.com",
         "clientIdAndroid": "50708049304-u9ncpu1b5imkb2svo2212vq3tfp6c21m.apps.googleusercontent.com",
         "clientIdIOS": "YOUR_IOS_CLIENT_ID",
-        "redirectUri": "seamless://redirect"
+        "redirectUri": "https://aa93d8e8668a.ngrok-free.app/auth/callbackt"
       }
     }
   }

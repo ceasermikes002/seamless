@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import CactusInit from '@/components/CactusInit';
+import CactusInit from '@/components/CactusInit.native';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { EmailProvider } from '@/contexts/EmailContext';
 import { EventProvider } from '@/contexts/EventContext';

@@ -100,7 +100,7 @@ export default function CactusExamplesScreen() {
     await lm.destroy();
   }, [cactus]);
 
-  const disabled = Platform.OS === 'web' || !cactus?.CactusLM;
+  const disabled = false;
 
   return (
     <SafeAreaView style={[styles.container, isDark && styles.darkContainer]}>
@@ -114,7 +114,7 @@ export default function CactusExamplesScreen() {
           <TouchableOpacity style={[styles.button, disabled && styles.buttonDisabled]} onPress={runCompletion} disabled={disabled}>
             <Text style={styles.buttonText}>Completion</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.button, disabled && styles.buttonDisabled]} onPress={runVision} disabled={disabled}>
+          <TouchableOpacity style={[styles.button, disabled && styles.buttonDisabled]} onPress={runVision} disabled={false}>
             <Text style={styles.buttonText}>Vision</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.button, disabled && styles.buttonDisabled]} onPress={runToolCall} disabled={disabled}>
