@@ -10,6 +10,7 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { CalendarService } from '@/services/calendar';
+import { marked } from 'marked';
 
 export default function ParsePreviewScreen() {
   const { emailId, parsedEvent: parsedEventParam } = useLocalSearchParams();
@@ -161,48 +162,52 @@ export default function ParsePreviewScreen() {
 
         <View style={styles.content}>
           {/* Email Content */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, isDark && styles.darkText]}>Original Email</Text>
-            <GlassCard style={[styles.card, isDark && styles.darkCard]}>
+          <View style={[styles.section, styles.lightCard]}>
+            <Text style={[styles.sectionTitle, styles.largeTitle]}>Original Email</Text>
+            <GlassCard style={[styles.card, styles.lightCard]}>
               <View style={styles.emailHeader}>
-                <Text style={[styles.sender, isDark && styles.darkText]}>{email.sender}</Text>
-                <Text style={[styles.date, isDark && styles.darkSubtext]}>
+                <Text style={[styles.sender, styles.darkText]}>{email.sender}</Text>
+                <Text style={[styles.date, styles.darkSubtext]}>
                   {formatDate(email.receivedAt)}
                 </Text>
               </View>
-              <Text style={[styles.subject, isDark && styles.darkText]}>{email.subject}</Text>
-              <Text style={[styles.contentText, isDark && styles.darkSubtext]}>{email.content}</Text>
+              <Text style={[styles.subject, styles.darkBlueTitle]}>{email.subject}</Text>
+              <View style={styles.markdownContainer}>
+                <Text style={styles.markdownText}>
+                  {marked(email.content)}
+                </Text>
+              </View>
             </GlassCard>
           </View>
 
           {/* Extracted Event */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, isDark && styles.darkText]}>Extracted Event</Text>
-            <GlassCard style={[styles.card, isDark && styles.darkCard]}>
+          <View style={[styles.section, styles.lightCard]}>
+            <Text style={[styles.sectionTitle, styles.largeTitle]}>Extracted Event</Text>
+            <GlassCard style={[styles.card, styles.lightCard]}>
               <View style={styles.eventHeader}>
                 <View style={[styles.categoryIndicator, { backgroundColor: getCategoryColor(parsedEvent.category) }]} />
-                <Text style={[styles.eventTitle, isDark && styles.darkText]}>{parsedEvent.title}</Text>
+                <Text style={[styles.eventTitle, styles.darkText]}>{parsedEvent.title}</Text>
               </View>
               
               <View style={styles.eventDetails}>
                 <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, isDark && styles.darkSubtext]}>Date:</Text>
-                  <Text style={[styles.detailValue, isDark && styles.darkText]}>
+                  <Text style={[styles.detailLabel, styles.darkSubtext]}>Date:</Text>
+                  <Text style={[styles.detailValue, styles.darkText]}>
                     {formatDate(parsedEvent.date)}
                   </Text>
                 </View>
                 
                 {parsedEvent.location && (
                   <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, isDark && styles.darkSubtext]}>Location:</Text>
-                    <Text style={[styles.detailValue, isDark && styles.darkText]}>
+                    <Text style={[styles.detailLabel, styles.darkSubtext]}>Location:</Text>
+                    <Text style={[styles.detailValue, styles.darkText]}>
                       {parsedEvent.location}
                     </Text>
                   </View>
                 )}
                 
                 <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, isDark && styles.darkSubtext]}>Category:</Text>
+                  <Text style={[styles.detailLabel, styles.darkSubtext]}>Category:</Text>
                   <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(parsedEvent.category) + '20' }]}>
                     <Text style={[styles.categoryText, { color: getCategoryColor(parsedEvent.category) }]}>
                       {parsedEvent.category}
@@ -212,16 +217,16 @@ export default function ParsePreviewScreen() {
                 
                 {parsedEvent.trackingId && (
                   <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, isDark && styles.darkSubtext]}>Tracking ID:</Text>
-                    <Text style={[styles.detailValue, isDark && styles.darkText]}>
+                    <Text style={[styles.detailLabel, styles.darkSubtext]}>Tracking ID:</Text>
+                    <Text style={[styles.detailValue, styles.darkText]}>
                       {parsedEvent.trackingId}
                     </Text>
                   </View>
                 )}
                 
                 <View style={styles.detailRow}>
-                  <Text style={[styles.detailLabel, isDark && styles.darkSubtext]}>Confidence:</Text>
-                  <Text style={[styles.detailValue, isDark && styles.darkText]}>
+                  <Text style={[styles.detailLabel, styles.darkSubtext]}>Confidence:</Text>
+                  <Text style={[styles.detailValue, styles.darkText]}>
                     {Math.round(parsedEvent.confidence * 100)}%
                   </Text>
                 </View>
@@ -231,10 +236,10 @@ export default function ParsePreviewScreen() {
 
           {/* Raw Extractions */}
           {parsedEvent.rawExtractions && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, isDark && styles.darkText]}>Raw Extractions</Text>
-              <GlassCard style={[styles.card, isDark && styles.darkCard]}>
-                <Text style={[styles.rawData, isDark && styles.darkSubtext]}>
+            <View style={[styles.section, styles.lightCard]}>
+              <Text style={[styles.sectionTitle, styles.largeTitle]}>Raw Extractions</Text>
+              <GlassCard style={[styles.card, styles.lightCard]}>
+                <Text style={[styles.rawData, styles.darkSubtext]}>
                   {JSON.stringify(parsedEvent.rawExtractions, null, 2)}
                 </Text>
               </GlassCard>
@@ -302,6 +307,11 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: 0,
   },
+  lightCard: {
+    backgroundColor: '#F3F4F6',
+    padding: 16,
+    borderRadius: 12,
+  },
   darkCard: {
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
@@ -329,6 +339,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     lineHeight: 20,
+  },
+  formattedText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#1F2937',
+    whiteSpace: 'pre-wrap',
   },
   eventHeader: {
     flexDirection: 'row',
@@ -423,5 +439,26 @@ const styles = StyleSheet.create({
   },
   darkSubtext: {
     color: '#9CA3AF',
+  },
+  largeTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  darkBlueTitle: {
+    color: '#1E3A8A',
+    fontWeight: 'bold',
+    fontSize: 20,
+  },
+  markdownContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+  },
+  markdownText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#1F2937',
   },
 });
