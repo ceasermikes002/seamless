@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ceasermikes.seamless"
     },
     "web": {
       "output": "static",
@@ -43,6 +44,18 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5e493898-8ec0-4cc9-92f4-49b443ef4006"
+      },
+      "googleOauth": {
+        "clientIdWeb": "266174409230-ia1cq3i8js253t1d1qc04dfed2vq93dq.apps.googleusercontent.com",
+        "clientIdAndroid": "266174409230-d9mj38lueg0k3hqt1m8go00hvptj3knp.apps.googleusercontent.com",
+        "clientIdIOS": "YOUR_IOS_CLIENT_ID",
+        "redirectUri": "seamless://redirect"
+      }
     }
   }
 }

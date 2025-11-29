@@ -1,0 +1,22 @@
+# Exclude heavy local models and large assets from EAS archive
+assets/models/**
+**/*.gguf
+
+# Build outputs and caches
+android/app/build/**
+ios/build/**
+dist/**
+build/**
+.expo/**
+.expo-shared/**
+
+# Misc
+*.mp4
+*.mov
+*.zip
+*.tar
+*.tar.gz
+.DS_Store
+
+# Node modules are excluded by default, but keep here for clarity
+node_modules/**
